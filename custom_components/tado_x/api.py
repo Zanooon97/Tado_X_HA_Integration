@@ -80,9 +80,69 @@ class TadoXApi:
             raise
 
     async def async_get_rooms_devices(self, home_id: int) -> Any:
-        """Return rooms with their devices for a home."""
-        url = f"{HOPS_BASE}/homes/{home_id}/rooms"
-        return await self._async_request("GET", url)
+        """Return rooms with their devices for a home.
+
+        The raw rooms endpoint does not always include all telemetry such as
+        humidity, heating power or the battery state.  This helper fetches the
+        base room list, enriches it with detailed room information and merges
+        available device data so the caller receives all relevant fields in one
+        structure.
+        """
+        rooms_url = f"{HOPS_BASE}/homes/{home_id}/rooms"
+        rooms = await self._async_request("GET", rooms_url)
+
+        # Map devices by their serial number to easily merge additional
+        # information (e.g. battery state) into the room structure.
+        devices = await self.async_get_devices(home_id)
+        device_map: dict[str, dict[str, Any]] = {}
+        for device in devices or []:
+            serial = device.get("serialNo") or device.get("serial")
+            if serial:
+                device_map[serial] = device
+
+        for room in rooms or []:
+            room_id = room.get("id") or room.get("serialNo")
+            # Fetch detailed room information if important fields are missing.
+            if any(
+                room.get(field) is None
+                for field in ("humidity", "heatingPower", "batteryState")
+            ) and room_id is not None:
+                try:
+                    detail_url = f"{HOPS_BASE}/homes/{home_id}/rooms/{room_id}"
+                    details = await self._async_request("GET", detail_url)
+                except aiohttp.ClientError:
+                    details = {}
+                room.setdefault(
+                    "current",
+                    details.get("current")
+                    or details.get("currentTemp")
+                    or details.get("currentTemperature"),
+                )
+                room.setdefault(
+                    "target",
+                    details.get("target")
+                    or details.get("targetTemp")
+                    or details.get("targetTemperature"),
+                )
+                for field in ("humidity", "heatingPower", "batteryState"):
+                    if field in details and room.get(field) is None:
+                        room[field] = details.get(field)
+
+            # Merge additional device info if available
+            for dev in room.get("devices") or []:
+                serial = dev.get("serialNo") or dev.get("serial")
+                if serial and (info := device_map.get(serial)):
+                    for key in ("batteryState", "model", "type", "firmware", "firmwareVersion"):
+                        if dev.get(key) is None and info.get(key) is not None:
+                            dev[key] = info.get(key)
+
+            # Ensure battery state on room level if present on the first device
+            if room.get("batteryState") is None:
+                first_device = (room.get("devices") or [None])[0] or {}
+                if first_device.get("batteryState") is not None:
+                    room["batteryState"] = first_device.get("batteryState")
+
+        return rooms
 
     async def async_get_devices(self, home_id: int) -> Any:
         """Return devices for a home."""
