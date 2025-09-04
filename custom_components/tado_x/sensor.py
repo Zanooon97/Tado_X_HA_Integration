@@ -48,7 +48,7 @@ class TadoXBaseSensor(SensorEntity):
     def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
         self.api = api
         self._room_id = room_id
-        self._serial = info.get("serial")
+        self._serial = info.get("serial") or info.get("serialNo")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._serial)} if self._serial else None,
             manufacturer="tado°",

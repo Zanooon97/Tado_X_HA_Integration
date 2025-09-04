@@ -54,7 +54,7 @@ class TadoXClimate(ClimateEntity):
         self._humidity = info.get("humidity")
         self._heating_power = info.get("heatingPower")
         self._battery_state = info.get("batteryState")
-        serial = info.get("serial")
+        serial = info.get("serial") or info.get("serialNo")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, serial)} if serial else None,
             manufacturer="tado°",

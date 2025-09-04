@@ -19,7 +19,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     rooms_data = await api.async_get_rooms_devices(home_id)
     rooms: dict[str, dict[str, str | float | None]] = {}
     for room in rooms_data or []:
-        room_id = str(room.get("id") or room.get("serialNo"))
+        room_id = str(
+            room.get("id") or room.get("serialNo") or room.get("serial")
+        )
         if not room_id:
             continue
         room_name = room.get("name")
@@ -37,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         heating_power = room.get("heatingPower")
 
         device = (room.get("devices") or [None])[0] or {}
-        serial = device.get("serialNo")
+        serial = device.get("serialNo") or device.get("serial")
         model = device.get("model") or device.get("type")
         firmware = device.get("firmware") or device.get("firmwareVersion")
         battery_state = device.get("batteryState") or room.get("batteryState")
