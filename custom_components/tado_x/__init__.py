@@ -25,8 +25,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     home_id = int(entry.data[CONF_HOME_ID])
 
     rooms_data = await api.async_get_rooms_devices(home_id)
+    rooms_list = rooms_data.get("rooms") if isinstance(rooms_data, dict) else rooms_data
     rooms: dict[str, dict[str, str | float | None]] = {}
-    for room in rooms_data or []:
+    for room in rooms_list or []:
         room_id = str(
             room.get("id") or room.get("serialNo") or room.get("serial")
         )
