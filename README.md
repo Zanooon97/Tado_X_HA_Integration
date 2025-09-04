@@ -1,6 +1,6 @@
 # Tado X Home Assistant Integration
 
-This custom component integrates Tado devices using a refresh token and home ID. The config flow validates your credentials against the Tado API and prevents duplicate entries.
+This custom component integrates Tado devices using the OAuth2 device authorization flow and a home ID. The config flow validates your credentials against the Tado API and prevents duplicate entries.
 
 ## Installation
 
@@ -15,17 +15,21 @@ This custom component integrates Tado devices using a refresh token and home ID.
 
 ## Erforderliche API-Daten
 
-Für die Einrichtung werden folgende Daten benötigt:
+Für die Einrichtung wird lediglich die **Home ID** benötigt.
 
-- **Refresh Token** – OAuth2 `refresh_token` aus deinem Tado-Konto.
-- **Home ID** – eindeutige ID deines Tado-Zuhauses.
+## Geräteautorisierung
+
+1. Füge in Home Assistant die Integration *Tado X Integration* hinzu.
+2. Ein Dialog zeigt `verification_uri` und `user_code` an.
+3. Öffne den Link im Browser, melde dich bei Tado an und gib den Code ein.
+4. Kehre zu Home Assistant zurück und gib deine `home_id` ein.
+5. Die erhaltenen Tokens werden im Config Entry gespeichert und bei Bedarf automatisch aktualisiert. Eine manuelle Tokenverwaltung ist nicht erforderlich.
 
 ## Beispielkonfiguration
 
 ```yaml
 # configuration.yaml
 tado_x:
-  refresh_token: "DEIN_REFRESH_TOKEN"
   home_id: 123456
 ```
 
