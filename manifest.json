@@ -1,9 +1,0 @@
-{
-  "domain": "tado_x",
-  "name": "Tado X Integration",
-  "version": "0.1.0",
-  "documentation": "https://example.com",
-  "codeowners": [],
-  "config_flow": true,
-  "requirements": []
-}

@@ -1,0 +1,10 @@
+{
+  "domain": "tado_x",
+  "name": "Tado X Integration",
+  "version": "0.1.0",
+  "documentation": "https://github.com/Zanooon97/Tado_X_HA_Integration",
+  "codeowners": ["@Zanooon97"],
+  "homeassistant": "2024.2.0",
+  "config_flow": true,
+  "requirements": []
+}
