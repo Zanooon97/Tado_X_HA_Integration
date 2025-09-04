@@ -74,7 +74,7 @@ class TadoXApi:
 
     async def async_get_rooms_devices(self, home_id: int) -> Any:
         """Return rooms with their devices for a home."""
-        url = f"{API_BASE}/homes/{home_id}/zones"
+        url = f"{HOPS_BASE}/homes/{home_id}/rooms"
         return await self._async_request("GET", url)
 
     async def async_get_devices(self, home_id: int) -> Any:
@@ -82,14 +82,14 @@ class TadoXApi:
         url = f"{API_BASE}/homes/{home_id}/devices"
         return await self._async_request("GET", url)
 
-    async def async_get_temperature(self, serial: str) -> dict[str, Any] | None:
-        """Retrieve current and target temperatures for a device."""
+    async def async_get_temperature(self, room_id: str) -> dict[str, Any] | None:
+        """Retrieve current and target temperatures for a room."""
         home_id = self._entry.data.get(CONF_HOME_ID)
-        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{serial}"
+        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{room_id}"
         try:
             data = await self._async_request("GET", url)
         except aiohttp.ClientError as err:
-            _LOGGER.error("Error fetching temperature for %s: %s", serial, err)
+            _LOGGER.error("Error fetching temperature for %s: %s", room_id, err)
             raise
         return {
             "current": data.get("current")
@@ -100,15 +100,15 @@ class TadoXApi:
             or data.get("targetTemperature"),
         }
 
-    async def async_set_temperature(self, serial: str, value: float) -> None:
-        """Set a new target temperature for a device."""
+    async def async_set_temperature(self, room_id: str, value: float) -> None:
+        """Set a new target temperature for a room."""
         home_id = self._entry.data.get(CONF_HOME_ID)
-        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{serial}"
+        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{room_id}"
         payload = {"target": value}
         try:
             await self._async_request("PUT", url, json=payload)
         except aiohttp.ClientError as err:
-            _LOGGER.error("Error setting temperature for %s: %s", serial, err)
+            _LOGGER.error("Error setting temperature for %s: %s", room_id, err)
             raise
 
     async def async_get_temperature_offset(self, device_id: str) -> float | None:
