@@ -9,11 +9,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import PERCENTAGE
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 
@@ -27,26 +28,26 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Tado X sensors."""
     data = hass.data[DOMAIN][entry.entry_id]
-    api = data["api"]
+    coordinator = data["coordinator"]
     rooms = data.get("rooms", {})
     entities: list[SensorEntity] = []
 
     for room_id, info in rooms.items():
         if info.get("humidity") is not None:
-            entities.append(TadoXHumiditySensor(api, room_id, info))
+            entities.append(TadoXHumiditySensor(coordinator, room_id, info))
         if info.get("heatingPower") is not None:
-            entities.append(TadoXHeatingPowerSensor(api, room_id, info))
+            entities.append(TadoXHeatingPowerSensor(coordinator, room_id, info))
         if info.get("batteryState") is not None:
-            entities.append(TadoXBatterySensor(api, room_id, info))
+            entities.append(TadoXBatterySensor(coordinator, room_id, info))
 
     async_add_entities(entities)
 
 
-class TadoXBaseSensor(SensorEntity):
+class TadoXBaseSensor(CoordinatorEntity, SensorEntity):
     """Base class for Tado X sensors."""
 
-    def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
-        self.api = api
+    def __init__(self, coordinator, room_id: str, info: dict[str, Any]) -> None:
+        super().__init__(coordinator)
         self._room_id = room_id
         self._serial = info.get("serial") or info.get("serialNo")
         self._attr_device_info = DeviceInfo(
@@ -57,14 +58,12 @@ class TadoXBaseSensor(SensorEntity):
             sw_version=info.get("firmware"),
         )
 
-    async def async_update(self) -> None:
-        try:
-            data = await self.api.async_get_temperature(self._room_id)
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error("Error updating sensor for %s: %s", self._room_id, err)
-            return
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        data = self.coordinator.data.get(self._room_id, {})
         if data:
             self._process_data(data)
+        super()._handle_coordinator_update()
 
     def _process_data(self, data: dict[str, Any]) -> None:
         """Handle updated data for the sensor."""
@@ -78,8 +77,8 @@ class TadoXHumiditySensor(TadoXBaseSensor):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
-        super().__init__(api, room_id, info)
+    def __init__(self, coordinator, room_id: str, info: dict[str, Any]) -> None:
+        super().__init__(coordinator, room_id, info)
         room_name = info.get("name")
         self._attr_name = f"{room_name} Humidity" if room_name else "Humidity"
         self._attr_unique_id = f"{room_id}_humidity"
@@ -95,8 +94,8 @@ class TadoXHeatingPowerSensor(TadoXBaseSensor):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
-        super().__init__(api, room_id, info)
+    def __init__(self, coordinator, room_id: str, info: dict[str, Any]) -> None:
+        super().__init__(coordinator, room_id, info)
         room_name = info.get("name")
         self._attr_name = (
             f"{room_name} Heating Power" if room_name else "Heating Power"
@@ -113,8 +112,8 @@ class TadoXBatterySensor(TadoXBaseSensor):
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
-        super().__init__(api, room_id, info)
+    def __init__(self, coordinator, room_id: str, info: dict[str, Any]) -> None:
+        super().__init__(coordinator, room_id, info)
         room_name = info.get("name")
         self._attr_name = (
             f"{room_name} Battery State" if room_name else "Battery State"

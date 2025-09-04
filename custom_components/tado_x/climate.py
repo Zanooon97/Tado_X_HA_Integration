@@ -11,9 +11,10 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 
@@ -28,14 +29,16 @@ async def async_setup_entry(
     """Set up the Tado X climate entities."""
     data = hass.data[DOMAIN][entry.entry_id]
     api = data["api"]
+    coordinator = data["coordinator"]
     rooms = data.get("rooms", {})
     entities = [
-        TadoXClimate(api, room_id, info) for room_id, info in rooms.items()
+        TadoXClimate(api, coordinator, room_id, info)
+        for room_id, info in rooms.items()
     ]
     async_add_entities(entities)
 
 
-class TadoXClimate(ClimateEntity):
+class TadoXClimate(CoordinatorEntity, ClimateEntity):
     """Representation of a Tado X climate device."""
 
     _attr_hvac_mode = HVACMode.HEAT
@@ -43,8 +46,9 @@ class TadoXClimate(ClimateEntity):
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    def __init__(self, api, room_id: str, info: dict[str, Any]) -> None:
+    def __init__(self, api, coordinator, room_id: str, info: dict[str, Any]) -> None:
         """Initialize the climate device."""
+        super().__init__(coordinator)
         self.api = api
         self._room_id = room_id
         self._attr_unique_id = f"{room_id}_climate"
@@ -72,19 +76,17 @@ class TadoXClimate(ClimateEntity):
         self._attr_target_temperature = temperature
         self.async_write_ha_state()
 
-    async def async_update(self) -> None:
-        """Fetch new state data for the climate entity."""
-        try:
-            data = await self.api.async_get_temperature(self._room_id)
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error("Error fetching climate data for %s: %s", self._room_id, err)
-            return
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data.get(self._room_id, {})
         if data:
             self._attr_current_temperature = data.get("current")
             self._attr_target_temperature = data.get("target")
             self._humidity = data.get("humidity")
             self._heating_power = data.get("heatingPower")
             self._battery_state = data.get("batteryState")
+        super()._handle_coordinator_update()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
