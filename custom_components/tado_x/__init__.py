@@ -1,0 +1,1 @@
+"""Tado X custom integration."""
