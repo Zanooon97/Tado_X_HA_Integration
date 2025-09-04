@@ -1,0 +1,1 @@
+# Tado_X_HA_Integration
