@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType
@@ -25,7 +26,9 @@ async def async_setup_entry(
     api = data["api"]
     rooms = data.get("rooms", {})
     entities = [
-        TadoXOffsetNumber(api, info) for info in rooms.values()
+        TadoXOffsetNumber(api, info)
+        for info in rooms.values()
+        if info.get("serial")
     ]
     async_add_entities(entities)
 
@@ -41,17 +44,16 @@ class TadoXOffsetNumber(NumberEntity):
         """Initialize the offset number."""
         self.api = api
         self._serial = info.get("serial") or info.get("serialNo")
+        if not self._serial:
+            raise PlatformNotReady("Missing serial number for Tado device")
         room_name = info.get("name")
         self._attr_name = (
             f"{room_name} Temperature Offset" if room_name else "Temperature Offset"
         )
-        if self._serial:
-            self._attr_unique_id = f"{self._serial}_temperature_offset"
-        else:
-            self._attr_unique_id = None
+        self._attr_unique_id = f"{self._serial}_temperature_offset"
         self._attr_native_value = None
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._serial)} if self._serial else None,
+            identifiers={(DOMAIN, self._serial)},
             manufacturer="tado°",
             name=info.get("name"),
             model=info.get("model"),
