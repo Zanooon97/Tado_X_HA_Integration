@@ -8,7 +8,10 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .const import CONF_HOME_ID
+
 API_BASE = "https://my.tado.com/api/v2"
+HOPS_BASE = "https://hops.tado.com"
 TOKEN_URL = "https://login.tado.com/oauth2/token"
 CLIENT_ID = "1bb50063-6b0c-4d11-bd99-387f4a91cc46"
 
@@ -54,16 +57,20 @@ class TadoXApi:
         if self._access_token:
             headers["Authorization"] = f"Bearer {self._access_token}"
 
-        async with self._session.request(method, url, headers=headers, **kwargs) as resp:
-            if resp.status == 401:
-                _LOGGER.debug("401 received, refreshing token")
-                await self.async_refresh_token()
-                headers["Authorization"] = f"Bearer {self._access_token}"
-                async with self._session.request(method, url, headers=headers, **kwargs) as resp2:
-                    resp2.raise_for_status()
-                    return await resp2.json()
-            resp.raise_for_status()
-            return await resp.json()
+        try:
+            async with self._session.request(method, url, headers=headers, **kwargs) as resp:
+                if resp.status == 401:
+                    _LOGGER.debug("401 received, refreshing token")
+                    await self.async_refresh_token()
+                    headers["Authorization"] = f"Bearer {self._access_token}"
+                    async with self._session.request(method, url, headers=headers, **kwargs) as resp2:
+                        resp2.raise_for_status()
+                        return await resp2.json()
+                resp.raise_for_status()
+                return await resp.json()
+        except aiohttp.ClientError as err:
+            _LOGGER.error("API request error for %s %s: %s", method, url, err)
+            raise
 
     async def async_get_rooms_devices(self, home_id: int) -> Any:
         """Return rooms with their devices for a home."""
@@ -74,6 +81,35 @@ class TadoXApi:
         """Return devices for a home."""
         url = f"{API_BASE}/homes/{home_id}/devices"
         return await self._async_request("GET", url)
+
+    async def async_get_temperature(self, serial: str) -> dict[str, Any] | None:
+        """Retrieve current and target temperatures for a device."""
+        home_id = self._entry.data.get(CONF_HOME_ID)
+        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{serial}"
+        try:
+            data = await self._async_request("GET", url)
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error fetching temperature for %s: %s", serial, err)
+            raise
+        return {
+            "current": data.get("current")
+            or data.get("currentTemp")
+            or data.get("currentTemperature"),
+            "target": data.get("target")
+            or data.get("targetTemp")
+            or data.get("targetTemperature"),
+        }
+
+    async def async_set_temperature(self, serial: str, value: float) -> None:
+        """Set a new target temperature for a device."""
+        home_id = self._entry.data.get(CONF_HOME_ID)
+        url = f"{HOPS_BASE}/homes/{home_id}/rooms/{serial}"
+        payload = {"target": value}
+        try:
+            await self._async_request("PUT", url, json=payload)
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error setting temperature for %s: %s", serial, err)
+            raise
 
     async def async_get_temperature_offset(self, device_id: str) -> float | None:
         """Retrieve the current temperature offset for a device."""
