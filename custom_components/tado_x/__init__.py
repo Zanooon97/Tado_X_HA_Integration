@@ -1,12 +1,20 @@
 """Tado X integration setup."""
 from __future__ import annotations
 
+import logging
+from datetime import timedelta
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import TadoXApi
-from .const import CONF_HOME_ID, DOMAIN, PLATFORMS
+from .const import CONF_HOME_ID, DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -56,8 +64,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "batteryState": battery_state,
         }
 
+    async def _async_update_data() -> dict[str, dict[str, Any]]:
+        data: dict[str, dict[str, Any]] = {}
+        for room_id in rooms:
+            try:
+                data[room_id] = await api.async_get_temperature(room_id)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.error("Error updating room %s: %s", room_id, err)
+        return data
+
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name="tado_x",
+        update_method=_async_update_data,
+        update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+    )
+
+    await coordinator.async_config_entry_first_refresh()
+
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {"api": api, "rooms": rooms}
+    hass.data[DOMAIN][entry.entry_id] = {
+        "api": api,
+        "rooms": rooms,
+        "coordinator": coordinator,
+    }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
