@@ -40,7 +40,7 @@ class TadoXOffsetNumber(NumberEntity):
     def __init__(self, api, info: dict[str, Any]) -> None:
         """Initialize the offset number."""
         self.api = api
-        self._serial = info.get("serial")
+        self._serial = info.get("serial") or info.get("serialNo")
         room_name = info.get("name")
         self._attr_name = (
             f"{room_name} Temperature Offset" if room_name else "Temperature Offset"
