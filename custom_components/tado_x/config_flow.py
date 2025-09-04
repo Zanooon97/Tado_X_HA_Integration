@@ -37,6 +37,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     if resp.status != 200:
         raise InvalidAuth
     token = await resp.json()
+    data[CONF_REFRESH_TOKEN] = token["refresh_token"]
 
     headers = {"Authorization": f"Bearer {token['access_token']}"}
     try:
@@ -52,7 +53,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise InvalidAuth
 
     devices = await dev_resp.json()
-    return {"title": f"Tado {data[CONF_HOME_ID]}", "devices": devices}
+    return {
+        "title": f"Tado {data[CONF_HOME_ID]}",
+        "devices": devices,
+        CONF_REFRESH_TOKEN: data[CONF_REFRESH_TOKEN],
+    }
 
 
 class TadoXConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -146,6 +151,7 @@ class TadoXConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             else:
+                self._tokens["refresh_token"] = info[CONF_REFRESH_TOKEN]
                 entry_data = {
                     CONF_HOME_ID: user_input[CONF_HOME_ID],
                     CONF_REFRESH_TOKEN: self._tokens["refresh_token"],
