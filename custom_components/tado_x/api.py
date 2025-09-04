@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 
 API_BASE = "https://my.tado.com/api/v2"
 TOKEN_URL = "https://login.tado.com/oauth2/token"
+CLIENT_ID = "1bb50063-6b0c-4d11-bd99-387f4a91cc46"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,8 +25,6 @@ class TadoXApi:
         self._session = session
         self._access_token: str | None = entry.data.get("access_token")
         self._refresh_token: str | None = entry.data.get("refresh_token")
-        self._client_id: str | None = entry.data.get("client_id")
-        self._client_secret: str | None = entry.data.get("client_secret")
 
     async def async_refresh_token(self) -> None:
         """Refresh the OAuth token using the refresh token."""
@@ -33,12 +32,10 @@ class TadoXApi:
             raise RuntimeError("No refresh token available")
 
         payload = {
-            "client_id": self._client_id,
+            "client_id": CLIENT_ID,
             "grant_type": "refresh_token",
             "refresh_token": self._refresh_token,
         }
-        if self._client_secret:
-            payload["client_secret"] = self._client_secret
 
         async with self._session.post(TOKEN_URL, data=payload) as resp:
             resp.raise_for_status()
