@@ -72,6 +72,12 @@ class TadoXApi:
         url = f"{API_BASE}/homes/{home_id}/zones"
         return await self._async_request("GET", url)
 
+    async def async_get_temperature_offset(self, device_id: str) -> float | None:
+        """Retrieve the current temperature offset for a device."""
+        url = f"{API_BASE}/devices/{device_id}/temperatureOffset"
+        data = await self._async_request("GET", url)
+        return data.get("celsius")
+
     async def async_update_temperature_offset(self, device_id: str, offset: float) -> Any:
         """Update the temperature offset for a device."""
         url = f"{API_BASE}/devices/{device_id}/temperatureOffset"

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import logging
+
 from homeassistant.components.number import NumberEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -43,5 +48,12 @@ class TadoXOffsetNumber(NumberEntity):
 
     async def async_update(self) -> None:
         """Fetch the latest offset from the API."""
-        offset = await self.api.async_get_temperature_offset(self._serial)
-        self._attr_native_value = offset
+        try:
+            offset = await self.api.async_get_temperature_offset(self._serial)
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.error(
+                "Error fetching temperature offset for %s: %s", self._serial, err
+            )
+            return
+        if offset is not None:
+            self._attr_native_value = offset
