@@ -90,7 +90,7 @@ class TadoXApi:
         return await self._async_request("GET", url)
 
     async def async_get_temperature(self, room_id: str) -> dict[str, Any] | None:
-        """Retrieve current and target temperatures for a room."""
+        """Retrieve room information including temperatures and other stats."""
         home_id = self._entry.data.get(CONF_HOME_ID)
         url = f"{HOPS_BASE}/homes/{home_id}/rooms/{room_id}"
         try:
@@ -105,6 +105,9 @@ class TadoXApi:
             "target": data.get("target")
             or data.get("targetTemp")
             or data.get("targetTemperature"),
+            "humidity": data.get("humidity"),
+            "heatingPower": data.get("heatingPower"),
+            "batteryState": data.get("batteryState"),
         }
 
     async def async_set_temperature(self, room_id: str, value: float) -> None:
