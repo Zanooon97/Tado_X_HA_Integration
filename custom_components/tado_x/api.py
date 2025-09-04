@@ -7,6 +7,7 @@ from typing import Any
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .const import CONF_HOME_ID
 
@@ -40,9 +41,15 @@ class TadoXApi:
             "refresh_token": self._refresh_token,
         }
 
-        async with self._session.post(TOKEN_URL, data=payload) as resp:
-            resp.raise_for_status()
-            data = await resp.json()
+        try:
+            async with self._session.post(TOKEN_URL, data=payload) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+        except aiohttp.ClientResponseError as err:
+            _LOGGER.error(
+                "Token refresh failed with status %s: %s", err.status, err.message
+            )
+            raise ConfigEntryAuthFailed("Token refresh failed") from err
 
         self._access_token = data.get("access_token")
         self._refresh_token = data.get("refresh_token", self._refresh_token)
