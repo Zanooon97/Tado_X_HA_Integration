@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 API_BASE = "https://my.tado.com/api/v2"
-TOKEN_URL = "https://auth.tado.com/oauth/token"
+TOKEN_URL = "https://login.tado.com/oauth2/token"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,10 +34,11 @@ class TadoXApi:
 
         payload = {
             "client_id": self._client_id,
-            "client_secret": self._client_secret,
             "grant_type": "refresh_token",
             "refresh_token": self._refresh_token,
         }
+        if self._client_secret:
+            payload["client_secret"] = self._client_secret
 
         async with self._session.post(TOKEN_URL, data=payload) as resp:
             resp.raise_for_status()
