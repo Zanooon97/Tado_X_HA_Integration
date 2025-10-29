@@ -4,21 +4,24 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 class TadoXApi:
-    def __init__(self, session: aiohttp.ClientSession, base_url: str):
+    def __init__(self, session: aiohttp.ClientSession, token: str):
         self._session = session
-        self._base_url = base_url
+        self._token = token
 
-    async def async_get_data(self):
-        """Beispielhafter API-Aufruf an Tado X."""
-        url = f"{self._base_url}/devices"
-        try:
-            async with self._session.get(url, timeout=10) as resp:
-                if resp.status != 200:
-                    _LOGGER.error("TadoX API returned %s", resp.status)
-                    return None
-                data = await resp.json()
-                _LOGGER.debug("Received data: %s", data)
-                return data
-        except Exception as e:
-            _LOGGER.error("Error connecting to TadoX API: %s", e)
-            return None
+    async def async_get_me(self):
+        """Hole Benutzerinformationen von Tado."""
+        url = "https://api.tado.com/v2/me"
+        headers = {"Authorization": f"Bearer {self._token}"}
+        async with self._session.get(url, headers=headers) as resp:
+            data = await resp.json()
+            _LOGGER.info("TadoX Benutzerinfo: %s", data)
+            return data
+
+    async def async_get_home(self, home_id: int):
+        """Hole Home-Daten (Geräte, Räume, etc.)."""
+        url = f"https://api.tado.com/v2/homes/{home_id}"
+        headers = {"Authorization": f"Bearer {self._token}"}
+        async with self._session.get(url, headers=headers) as resp:
+            data = await resp.json()
+            _LOGGER.info("TadoX Home %s Daten: %s", home_id, data)
+            return data
