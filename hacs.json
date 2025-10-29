@@ -1,5 +1,6 @@
 {
-  "name": "Tado X",
-  "domain": "tado_x",
-  "country": "any"
+  "name": "Tado X Integration",
+  "domain": "tadox_integration",
+  "homeassistant": "2024.1.0",
+  "render_readme": true
 }
