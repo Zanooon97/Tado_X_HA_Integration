@@ -1,0 +1,9 @@
+{
+  "domain": "tadox_integration",
+  "name": "Tado X Integration",
+  "version": "1.0.0",
+  "documentation": "https://github.com/deinname/tadox_integration",
+  "requirements": ["aiohttp"],
+  "codeowners": ["@deinname"],
+  "iot_class": "cloud_polling"
+}
