@@ -3,7 +3,15 @@
   "name": "Tado X Integration",
   "version": "1.0.0",
   "documentation": "https://github.com/deinname/tadox_integration",
+  "issue_tracker": "https://github.com/deinname/tadox_integration/issues",
   "requirements": ["aiohttp"],
   "codeowners": ["@deinname"],
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "config_flow": true,
+  "oauth2": {
+    "client_id": "YOUR_TADO_CLIENT_ID",
+    "client_secret": "YOUR_TADO_CLIENT_SECRET",
+    "authorize_url": "https://auth.tado.com/oauth/authorize",
+    "token_url": "https://auth.tado.com/oauth/token"
+  }
 }
